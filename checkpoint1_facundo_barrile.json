@@ -1,0 +1,346 @@
+{
+  "name": "Checkpoint 1 · Agente de CV y Cover Letter v2 (Facundo Barrile)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d92157db-95dc-4fc2-a94f-8d14f3dce326",
+      "name": "Chat: vacante del candidato",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -64,
+        1216
+      ],
+      "webhookId": "3c540cfc-81c2-4314-a7ec-cd5ff303aa2f"
+    },
+    {
+      "parameters": {
+        "sendTo": "fbarrile85@gmail.com",
+        "subject": "=Tarea fallida · Agente CV · revisar ejecución",
+        "emailType": "text",
+        "message": "=Tarea fallida · Agente de CV y Cover Letter\nFecha: {{ $now.toFormat('dd/MM/yyyy HH:mm') }}\nSesión: {{ $('Chat: vacante del candidato').item.json.sessionId }}\n\nPEDIDO DEL USUARIO\n{{ $('Chat: vacante del candidato').item.json.chatInput.slice(0, 600) }}\n\nERROR\n{{ $json.error ? ($json.error.message || JSON.stringify($json.error)) : JSON.stringify($json) }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "a3bfad2c-2120-4b93-b4bb-23ddb9894f4d",
+      "name": "Log de falla (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        1360
+      ],
+      "webhookId": "811c4d5f-dbe0-4ddb-b014-63533573232c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "D8Z75OI4UIaz99ym",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e982fb7-c45c-4b5f-ad2a-9ee4a9810e6c",
+              "name": "output",
+              "type": "string",
+              "value": "No pude completar el análisis por un problema técnico. Ya quedó registrado para revisión. Probá de nuevo en unos minutos."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7de639e0-b75a-4ce2-af58-0214f81a8efa",
+      "name": "Respuesta de falla al candidato",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        864,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Batería de prueba\nCada ejecución envía un mail; el asunto indica el estado.\n1. 'quiero evaluar una vacante' -> FALTA UN DATO, sin herramientas, mail [FALTA UN DATO]\n2. Vacante sin link al CV -> FALTA UN DATO, pide el link, mail [FALTA UN DATO]\n3. Vacante + link inválido -> SIN ACCESO AL CV, máximo 2 lecturas, no pide hacer público el doc, mail [SIN ACCESO AL CV]\n4. Vacante con buen match + CV -> COMPLETO, 1 lectura, mail [COMPLETO] con 'Tarea completada'\n5. Vacante restringida a otro país -> COMPLETO con 'no elegible' y match Bajo, mail [COMPLETO]\n6. Vacante de otra profesión -> COMPLETO, match Bajo, sin forzar ajustes, mail [COMPLETO]\n7. 'Postulate por mí' / 'negociá mi salario' -> FUERA DE ALCANCE, mail [FUERA DE ALCANCE]\n8. Mensaje 1 vacante, mensaje 2 link -> la memoria mantiene la vacante: primer mail [FALTA UN DATO], segundo [COMPLETO]\n9. Max Iterations en 1 + vacante y CV -> salida de error, mail 'Tarea fallida' (después volver a 8)\nEn ningún caso la etiqueta ESTADO aparece en la respuesta del chat.",
+        "height": 332,
+        "width": 748,
+        "color": 7
+      },
+      "id": "9411dd09-8950-4dff-bf88-9223f46a20bf",
+      "name": "Nota: batería de prueba",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Parte lineal (determinista)\nEntrada por chat, logs por Gmail y respuesta al usuario. Siempre corren igual, sin criterio: no necesitan IA.\n\n## Observabilidad\nSe registra cada ejecución, no solo las exitosas: también cuando el agente pide un dato, no puede leer el CV o rechaza un pedido. La etiqueta ESTADO con la que el agente empieza su respuesta clasifica el mail en el asunto para poder filtrarlo en Gmail; no decide si se envía. Si el modelo omite la etiqueta, el mail sale como [SIN ETIQUETA] y ese desvío también queda registrado. Si el agente falla o llega al límite de iteraciones, la salida de error manda un log de \"Tarea fallida\".",
+        "height": 292,
+        "width": 520,
+        "color": 7
+      },
+      "id": "3fac06d8-665b-433c-89df-0b4a62ff8646",
+      "name": "Nota: parte lineal1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Parte agéntica (ciclo ReAct)\nEl agente decide si necesita leer el CV, si falta información y qué entra como ajuste o como brecha. Guardrails: máximo 8 iteraciones, una sola herramienta de solo lectura, sin envíos ni postulaciones en nombre de la persona.",
+        "height": 220,
+        "width": 460,
+        "color": 4
+      },
+      "id": "179b0741-5076-4235-8432-85058bf2e9e2",
+      "name": "Nota: parte agéntica1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "# ROL\nSos el Asesor de Postulaciones de un servicio de acompañamiento en búsqueda laboral y outplacement. Ayudás a una persona candidata a preparar una postulación concreta: leés la vacante, la comparás con su CV real y proponés ajustes al CV y una cover letter. Tu criterio es el de un reclutador técnico con experiencia: honesto, específico y sin exageraciones.\n\n# ÁMBITO\n- Trabajás sobre UNA vacante por vez, que la persona pega en el chat (texto completo o los requisitos principales).\n- La única fuente de verdad sobre la persona es su CV base, que leés con la herramienta \"Leer CV del candidato\". No usás conocimiento externo sobre la persona ni suponés experiencia que el CV no muestre.\n- Fuera de alcance: postularte o enviar mensajes en nombre de la persona, negociar salarios, dar asesoramiento legal o financiero, y cualquier tema que no sea preparar esta postulación.\n\n# OBJETIVO\nEntregar, en una sola respuesta, un paquete listo para que la persona revise y decida:\n1. Elegibilidad: si la vacante restringe país, región o zona horaria, compará con la ubicación que figura en el CV y decí si es elegible, no elegible o no está claro. Si no es elegible, decilo al principio del análisis.\n2. Lectura de la vacante: los 5 a 7 requisitos que más pesan, en orden de importancia.\n3. Nivel de match (Alto, Medio o Bajo) con 2 o 3 líneas de justificación. Si no es elegible por ubicación, el match es Bajo aunque el perfil encaje.\n4. Ajustes sugeridos al CV: entre 3 y 6 cambios concretos (qué línea cambiar, cómo quedaría y por qué). Solo reordenar, priorizar o reformular hechos que ya están en el CV.\n5. Brechas: requisitos de la vacante que el CV no respalda, y cómo conviene tratarlos (mencionarlos con honestidad en la cover letter, prepararlos para la entrevista o aceptar que no aplica).\n6. Cover letter: un borrador de máximo 250 palabras, en el idioma de la vacante, en primera persona, con tono profesional y directo.\n\n# FORMATO DE RESPUESTA\nEmpezá SIEMPRE tu respuesta con una primera línea que diga exactamente una de estas etiquetas, sola en esa línea:\n- ESTADO: COMPLETO (entregaste el paquete de 6 partes)\n- ESTADO: FALTA UN DATO (pediste la vacante o el link al CV)\n- ESTADO: SIN ACCESO AL CV (la herramienta no pudo leer el documento)\n- ESTADO: FUERA DE ALCANCE (el pedido no es preparar una postulación)\nEl flujo usa esa etiqueta para clasificar el log de supervisión. No la omitas ni la cambies.\n\n# REGLAS\n- Nunca inventes métricas, empresas, cargos, fechas, tecnologías ni logros. Si un dato no está en el CV, no existe para vos.\n- Al reformular una línea del CV, no agregues conceptos que la línea original no contiene. Podés cambiar el orden, el énfasis y las palabras, pero no sumar responsabilidades, herramientas ni resultados. Si para encajar con la vacante necesitarías agregar algo, eso va a \"Brechas\".\n- Si la vacante pide algo que el CV no respalda, va a \"Brechas\". Nunca lo disfraces en el CV ni en la cover letter.\n- Antes de proponer cualquier ajuste, leé el CV con la herramienta. No respondas sobre el CV de memoria ni a partir de lo que diga la persona en el chat.\n- No uses frases vendedoras genéricas (\"apasionado\", \"orientado a resultados\", \"sinergia\") ni guiones largos.\n- Redactá en español neutro profesional, sin lenguaje inclusivo con \"e\", \"x\" o \"@\".\n- No nombres clientes de empleadores anteriores en la cover letter.\n- Todo lo que entregás es una propuesta: la persona revisa y decide. Cerrá siempre recordando que revise los cambios antes de usarlos.\n\n# ESCALAMIENTO\n- Si falta la vacante, pedila y no hagas nada más.\n- Si falta el link al CV base (un Google Doc), pedilo antes de evaluar.\n- Si la herramienta falla o el documento no se puede leer, decilo y pedí que verifique que el link esté completo y corresponda a un Google Doc. No le pidas que haga público el documento. No intentes la misma lectura más de dos veces.\n- Si la vacante es para un perfil muy alejado del CV (por ejemplo, otra profesión), decilo con claridad, marcá el match como Bajo y no fuerces los ajustes.\n- Si la persona pide algo fuera de alcance, explicá en una línea que no forma parte de este servicio y volvé a la postulación.",
+          "maxIterations": 8,
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        128,
+        1216
+      ],
+      "id": "29504012-6b0c-45cf-864a-f83a69f86f43",
+      "name": "Agente CV y Cover Letter",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "fbarrile85@gmail.com",
+        "subject": "=[{{ (($json.output.match(/ESTADO:\\s*([^\\n]+)/) || [])[1] || 'SIN ETIQUETA').trim()  }}] Agente CV {{ ($json.intermediateSteps || []).length }} llamada(s) a herramientas",
+        "emailType": "text",
+        "message": "={{ (($json.output.match(/ESTADO:\\s*([^\\n]+)/) || [])[1] || 'SIN ETIQUETA').trim() === 'COMPLETO' ? 'Tarea completada' : 'Ejecución registrada: ' + (($json.output.match(/ESTADO:\\s*([^\\n]+)/) || [])[1] || 'SIN ETIQUETA').trim() }} · Agente de CV y Cover Letter\nFecha: {{ $now.toFormat('dd/MM/yyyy HH:mm') }}\nSesión: {{ $('Chat: vacante del candidato').item.json.sessionId }}\nIteraciones con herramientas: {{ ($json.intermediateSteps || []).length }} de 8 permitidas\n\nPEDIDO DEL USUARIO (primeros 600 caracteres)\n{{ $('Chat: vacante del candidato').item.json.chatInput.slice(0, 600) }}\n\nDECISIONES DEL AGENTE (herramientas usadas, en orden)\n{{ ($json.intermediateSteps || []).map((s, i) => (i + 1) + '. ' + s.action.tool + ' -> ' + JSON.stringify(s.action.toolInput)).join('\\n') || 'El agente no usó herramientas en esta respuesta.' }}\n\nRESPUESTA ENTREGADA\n{{ $json.output }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3bbd9efe-58d8-4af0-b782-2229b4451b5b",
+      "name": "Log de supervisión (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        592,
+        1152
+      ],
+      "webhookId": "5b16465e-d41e-4ef0-bfa3-7544b6a7bec3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "D8Z75OI4UIaz99ym",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8fc0e980-e092-4c0f-b07f-3ed6a2b9d597",
+              "name": "output",
+              "type": "string",
+              "value": "={{ $('Agente CV y Cover Letter').item.json.output.replace(/^\\s*ESTADO:[^\\n]*\\n+/, '') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ae29caef-e01f-4bf6-906f-184d7ad6ab62",
+      "name": "Respuesta al candidato",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        864,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "maxTokensToSample": 4096,
+          "temperature": 0.3
+        }
+      },
+      "id": "d123d98f-3f1b-4981-ac1d-b2ee741bc9d7",
+      "name": "Claude (Chat Model)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        32,
+        1600
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "P13B8gIJnXXr4H5D",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "id": "be62a719-81c4-4524-aa79-72fee4783425",
+      "name": "Memoria de la sesión",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        1632
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Lee el contenido completo del CV base de la persona candidata desde un Google Doc. Devuelve el texto del documento: perfil, experiencia, logros, formación y competencias.\n\nCuándo usarla:\n- Siempre que la persona haya pegado una vacante y compartido el link de su CV, antes de evaluar el match, proponer ajustes o escribir la cover letter. Es la única fuente válida sobre la experiencia de la persona.\n- Cuando la persona diga que actualizó su CV o comparta un link nuevo: volvé a leerlo.\n- Cuando necesites verificar si un requisito de la vacante tiene respaldo real en el CV antes de mencionarlo.\n\nCuándo NO usarla:\n- Si la persona todavía no compartió el link al CV: pedíselo primero.\n- Si la pregunta no tiene que ver con una postulación.\n- Si ya leíste ese mismo documento en esta conversación y la persona no avisó cambios: usá lo que ya leíste.\n\nEntrada: la URL del Google Doc tal como la compartió la persona en el chat (formato https://docs.google.com/document/d/...).",
+        "operation": "get",
+        "documentURL": "={{ $fromAI('url_cv', 'URL completa del Google Doc con el CV base de la persona candidata, tal como la compartió en el chat', 'string') }}"
+      },
+      "id": "363c3978-37c7-461e-9846-4b39922b2c78",
+      "name": "Leer CV del candidato (Google Docs)",
+      "type": "n8n-nodes-base.googleDocsTool",
+      "typeVersion": 2,
+      "position": [
+        432,
+        1600
+      ],
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "poxMCptOYx0KcHHD",
+          "name": "Google Docs account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat: vacante del candidato": {
+      "main": [
+        [
+          {
+            "node": "Agente CV y Cover Letter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log de falla (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Respuesta de falla al candidato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente CV y Cover Letter": {
+      "main": [
+        [
+          {
+            "node": "Log de supervisión (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log de falla (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log de supervisión (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Respuesta al candidato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude (Chat Model)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente CV y Cover Letter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria de la sesión": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente CV y Cover Letter",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer CV del candidato (Google Docs)": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente CV y Cover Letter",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c0d7fe7a-81ce-4a58-8ee9-85190ccc4fa2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "06b604fd920dea1077a3326c07f5b8069f0d4e750fe5342969d4ca8c688f3769"
+  },
+  "nodeGroups": [],
+  "id": "SFpkLU6O4OSsC2dp",
+  "tags": []
+}
