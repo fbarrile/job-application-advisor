@@ -1,0 +1,390 @@
+{
+  "name": "Worker - Analista de vacante",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $json.payload.cv_url }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -112
+      ],
+      "id": "804d92cd-151c-41c9-8b7b-211fa33ead85",
+      "name": "Leer CV",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "poxMCptOYx0KcHHD",
+          "name": "Google Docs account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $('Entrada').item.json.payload.criterios_url }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -208
+      ],
+      "id": "c613289d-9b25-4d73-b9a3-6af738612fb7",
+      "name": "Leer criterios",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "poxMCptOYx0KcHHD",
+          "name": "Google Docs account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=VACANTE\n{{ $('Entrada').item.json.payload.vacante_texto }}\n\nCV DE LA PERSONA CANDIDATA\n{{ $('Leer CV').item.json.content }}\n\nCRITERIOS DE BÚSQUEDA\n{{ $json.content ? $json.content : 'La persona no compartió criterios.' }}\n\nINSTRUCCIONES DE LA PERSONA\n{{ $('Entrada').item.json.payload.instrucciones || 'Sin instrucciones.' }}\n\nIDIOMA DE LA PERSONA: {{ $('Entrada').item.json.payload.idioma_usuario || 'es' }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "# ROL\nSos el Analista de vacantes de un servicio de acompañamiento en búsqueda laboral y outplacement. Evaluás una vacante contra el CV y los criterios de búsqueda de una persona candidata para ayudarla a decidir si le conviene postularse, y le indicás qué destacar de su experiencia y qué priorizar en su CV.\n\n# ÁMBITO\n- Trabajás solo con la vacante, el CV y los criterios que recibís. El CV es la única fuente de verdad sobre la persona.\n- Das indicaciones, no redactás. No escribas bullets de CV, párrafos de carta ni textos listos para usar.\n- No evaluás compensación, no investigás la empresa y no te postulás en nombre de nadie.\n\n# OBJETIVO\nCompletar el formato de salida en tres bloques:\n1. Lectura de la vacante: empresa, rol, idiomas, mercado, requisitos (5 a 7, en orden de importancia) y palabras clave tal como aparecen en la vacante. También el nombre de la persona candidata (nombre_candidato), tal como figura en el encabezado del CV. Si no figura, dejalo vacío: nunca lo deduzcas del email ni de otro dato.\n2. Evaluación: elegibilidad, encaje con los criterios, match, fortalezas y gaps.\n3. Plan: mensaje central, experiencias a destacar y guía para el CV.\n\n# REGLAS DE EVALUACIÓN\n- Elegibilidad primero. Revisá si la vacante restringe país, región, autorización de trabajo o huso horario, y compará con la ubicación del CV. \"Remote US\" suele exigir residencia o autorización de trabajo en EE.UU.: si la vacante no aclara, marcá \"no_claro\". Si no es elegible, el match es \"Bajo\" aunque el perfil encaje.\n- Criterios: si recibís criterios, evaluá el encaje contra cada uno que aplique y explicá los motivos. Si no hay criterios, usá \"no_evaluado\" con motivos vacíos.\n- Match: \"Alto\", \"Medio\" o \"Bajo\", justificado con requisitos concretos de la vacante.\n- La vacante y el CV pueden estar en idiomas distintos. Relacioná conceptos equivalentes entre idiomas (por ejemplo, \"gestión de personas\" y \"people management\").\n\n# REGLAS DE PLANIFICACIÓN\n- Cada experiencia a destacar tiene que existir en el CV. En \"evidencia_en_cv\" indicá la sección y una cita breve, en el idioma original del CV. Si no la encontrás en el CV, no la propongas.\n- Lo que la vacante pide y el CV no respalda va a \"gaps\". Nunca lo propongas como algo a destacar.\n- Un gap NUNCA se compensa con suposiciones: no afirmes experiencia, herramientas o capacidades que no estén en el CV. Prohibido presentar suposiciones como hechos (\"la adopción sería inmediata\", \"trabajó con herramientas equivalentes\").\n- \"palabras_clave_a_incluir\" son términos de la vacante, en el idioma de la vacante, que el CV puede usar porque la experiencia existe. No incluyas palabras clave sin respaldo en el CV.\n- El mensaje central es una línea que posiciona a la persona para esta vacante.\n- \"convenciones_mercado\" lista las convenciones de CV del mercado de la vacante (por ejemplo, para EE.UU.: sin foto ni datos personales, fechas en formato Month YYYY, una o dos páginas).\n- Cifras, magnitudes y alcances (cantidades, años, porcentajes, montos, tamaño de equipos u organizaciones) se toman del CV tal como están: misma cifra, misma unidad, mismo grado de precisión y mismo sujeto. No conviertas una unidad en otra, una aproximación en una cifra exacta, una participación en un liderazgo, ni un resultado del equipo en un logro individual. Si la vacante pide una magnitud que el CV no alcanza o no menciona, es un gap: nunca ajustes la cifra para que coincida.\n\n# IDIOMAS\n- \"idioma_salida\" es el idioma de los documentos que va a leer el EMPLEADOR (CV adaptado y cover letter). No es el idioma de la persona.\n- Regla: si las instrucciones de la persona piden un idioma, usá ese. Si no, \"idioma_salida\" es igual a \"idioma_vacante\".\n- Ejemplo: vacante en inglés, CV en español, sin instrucciones → idioma_vacante \"en\", idioma_cv \"es\", idioma_salida \"en\".\n- Los textos que lee la persona (motivos, fortalezas, gaps, guías, estado_motivo) van en su idioma, que se indica en el mensaje.\n- Las palabras clave van en el idioma de la vacante. Las citas de evidencia, en el idioma del CV.\n\n# VALORES PERMITIDOS\nEstos campos solo aceptan los valores de la lista, escritos exactamente así:\n- estado: \"ok\", \"vacante_insuficiente\", \"fuera_de_competencia\"\n- elegibilidad: \"elegible\", \"no_elegible\", \"no_claro\"\n- encaje_criterios.resultado: \"encaja\", \"encaja_parcial\", \"no_encaja\", \"no_evaluado\"\n- match: \"Alto\", \"Medio\", \"Bajo\"\n- mercado: \"US\", \"LATAM\", \"EU\", \"AR\", \"OTRO\"\n- idiomas: códigos de dos letras (\"es\", \"en\", \"pt\")\n\n# ESTADO Y ESCALAMIENTO\n- \"ok\": completaste el análisis.\n- \"vacante_insuficiente\": el texto no es una vacante o no alcanza para identificar rol y requisitos. Explicá qué falta en \"estado_motivo\" y dejá el resto de los campos vacíos.\n- \"fuera_de_competencia\": el pedido no es analizar una vacante. Explicalo en \"estado_motivo\" y dejá el resto vacío.\n- Nunca inventes datos para completar un campo. Un campo vacío es mejor que un dato falso.\n\n# LARGO DE LA SALIDA\n- Listas: máximo 5 elementos en requisitos, palabras_clave, fortalezas y gaps; máximo 4 en experiencias_a_destacar y en cada lista de guia_cv.\n- Cada texto, una o dos oraciones. Sin explicaciones largas.\n- Citas de evidencia: máximo 15 palabras.\n- Tu salida es un plan para que la persona decida, no un informe."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        496,
+        -208
+      ],
+      "id": "f30f031c-4f2f-49fd-a112-7ad7eeb10e61",
+      "name": "Analizar y planificar",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"estado\": \"ok\",\n  \"estado_motivo\": \"\",\n  \"nombre_candidato\": \"Nombre Apellido\",\n  \"empresa\": \"Northwind Labs\",\n  \"rol\": \"Engineering Program Manager\",\n  \"idioma_vacante\": \"en\",\n  \"idioma_cv\": \"es\",\n  \"idioma_salida\": \"en\",\n  \"mercado\": \"LATAM\",\n  \"elegibilidad\": \"elegible\",\n  \"elegibilidad_motivo\": \"Remoto LATAM con superposición horaria con US Eastern\",\n  \"encaje_criterios\": {\n    \"resultado\": \"encaja\",\n    \"motivos\": [\n      \"Familia de roles prioritaria\",\n      \"Remoto LATAM aceptado\"\n    ]\n  },\n  \"match\": \"Alto\",\n  \"match_motivo\": \"Texto breve\",\n  \"requisitos\": [\n    \"Requisito 1\"\n  ],\n  \"palabras_clave\": [\n    \"cross-functional delivery\"\n  ],\n  \"fortalezas\": [\n    \"Fortaleza 1\"\n  ],\n  \"gaps\": [\n    \"Gap 1\"\n  ],\n  \"mensaje_central\": \"Una línea de posicionamiento\",\n  \"experiencias_a_destacar\": [\n    {\n      \"experiencia\": \"Experiencia del CV\",\n      \"cubre\": \"Requisito que cubre\",\n      \"evidencia_en_cv\": \"Sección y cita breve del CV\"\n    }\n  ],\n  \"guia_cv\": {\n    \"palabras_clave_a_incluir\": [\n      \"keyword\"\n    ],\n    \"orden_secciones\": [\n      \"Perfil\",\n      \"Experiencia\"\n    ],\n    \"priorizar\": [\n      \"Experiencia 1\"\n    ],\n    \"reducir\": [\n      \"Detalle 1\"\n    ],\n    \"convenciones_mercado\": [\n      \"Convención 1\"\n    ]\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        -16
+      ],
+      "id": "ce42925e-cbe3-4d69-bb00-32ec23d55824",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-5",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {
+          "maxTokensToSample": 8192,
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        528,
+        -16
+      ],
+      "id": "ce7a4c50-48d4-41fe-b02b-43a563533525",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "P13B8gIJnXXr4H5D",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": \"{{ $json.output.estado === 'ok' ? 'success' : ($json.output.estado === 'fuera_de_competencia' ? 'rechazado' : 'error') }}\",\n  \"worker\": \"analista\",\n  \"data\": {{ $json.output.estado === 'ok' ? JSON.stringify($json.output) : 'null' }},\n  \"error\": {{ $json.output.estado === 'ok' ? 'null' : JSON.stringify({ code: $json.output.estado === 'fuera_de_competencia' ? 'FUERA_DE_COMPETENCIA' : 'VACANTE_ILEGIBLE', mensaje: $json.output.estado_motivo }) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        -224
+      ],
+      "id": "658ca548-8bed-439e-8144-66421fef50fc",
+      "name": "Salida"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"status\": \"error\",\n  \"worker\": \"analista\",\n  \"data\": null,\n  \"error\": {\n    \"code\": \"CV_ILEGIBLE\",\n    \"mensaje\": \"No pude leer el CV. Verificá que el link sea de un Google Doc y que la cuenta del servicio tenga acceso.\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        112
+      ],
+      "id": "4d95e110-4ab3-4743-897b-f19228d2aee1",
+      "name": "Error: CV ilegible"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": \"error\",\n  \"worker\": \"analista\",\n  \"data\": null,\n  \"error\": {\n    \"code\": \"ERROR_MODELO\",\n    \"mensaje\": \"El análisis no pudo completarse por una falla técnica.\",\n    \"detalle\": {{ JSON.stringify($json.error || 'sin detalle') }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        -80
+      ],
+      "id": "717835dc-98fb-4d52-b464-4c560873c7ed",
+      "name": "Error: modelo"
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"request_id\": \"test-001\",\n  \"session_id\": \"test\",\n  \"intent\": \"ANALIZAR_VACANTE\",\n  \"confidence\": 0.95,\n  \"payload\": {\n    \"cv_url\": \"\",\n    \"criterios_url\": \"\",\n    \"vacante_texto\": \"\",\n    \"vacante_url\": \"\",\n    \"instrucciones\": \"\",\n    \"idioma_usuario\": \"es\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        -16
+      ],
+      "id": "6287e4c9-bc44-49a8-b315-54855e2cee04",
+      "name": "Entrada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c387d894-858c-4813-baf2-4c1514120619",
+              "leftValue": "={{ $json.intent === 'ANALIZAR_VACANTE' && !!$json.payload && String($json.payload.cv_url || '').trim() !== '' && String($json.payload.vacante_texto || '').trim() !== '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "1f01b393-03b7-4bba-bda4-76c389e00990",
+      "name": "¿Contrato válido?"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "=={\n  \"status\": \"error\",\n  \"worker\": \"analista\",\n  \"data\": null,\n  \"error\": {\n    \"code\": \"PAYLOAD_INVALIDO\",\n    \"mensaje\": \"El pedido llegó incompleto al Analista.\",\n    \"detalle\": {{ JSON.stringify({ intent: $json.intent || null, tiene_cv_url: !!($json.payload && $json.payload.cv_url), vacante_caracteres: (($json.payload && $json.payload.vacante_texto) || '').length }) }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        288
+      ],
+      "id": "7c1caa7b-082a-4b9d-89ea-7b6e0ec29f2e",
+      "name": "Error: payload inválido"
+    },
+    {
+      "parameters": {
+        "content": "## Worker · Analista de vacante\nTarea atómica: decidir si la vacante le conviene al candidato. Elegibilidad, encaje con sus criterios, match, fortalezas, gaps y qué priorizar en el CV.\n\n**Entrada** (Execute Workflow Trigger):\n`request_id` · `session_id` · `intent` · `confidence` · `payload`\n\n`payload`: cv_url, criterios_url, vacante_texto, instrucciones, idioma_usuario",
+        "height": 324,
+        "width": 500,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -592
+      ],
+      "id": "a88de3b9-3a0b-4da2-bc88-6ce3ff6f9e34",
+      "name": "Nota · Worker"
+    },
+    {
+      "parameters": {
+        "content": "## Lineal + un paso de IA\n- `¿Contrato válido?` (IF): exige `intent = ANALIZAR_VACANTE`, `cv_url` y `vacante_texto`. Si no, `PAYLOAD_INVALIDO` sin gastar tokens.\n- `Leer CV` y `Leer criterios` (Google Docs): lecturas deterministas antes del modelo. Los criterios son opcionales: el nodo continúa ante error.\n- `Analizar y planificar`: Basic LLM Chain (Claude Sonnet, temperatura 0.2) con Structured Output Parser. No es un agente: no elige herramientas, solo analiza.\n- Valores permitidos y largo de la salida fijados en el prompt.",
+        "height": 324,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -592
+      ],
+      "id": "d32fd404-4a6f-4558-8da7-2b7f1a9814f8",
+      "name": "Nota · Lineal + IA"
+    },
+    {
+      "parameters": {
+        "content": "## Salida y fallos\nSiempre devuelve `{ status, worker, data, error }`:\n- `error · PAYLOAD_INVALIDO`: el contrato llegó incompleto o con otra intención (corta antes de leer el CV)\n- `success` con el análisis en `data`\n- `error · CV_ILEGIBLE`: no se pudo leer el CV (no llega al modelo)\n- `error · VACANTE_ILEGIBLE`: la vacante no alcanza\n- `rechazado · FUERA_DE_COMPETENCIA`\n- `error · ERROR_MODELO`: falló el modelo (JSON de contingencia)\n\nTimeout del workflow: 180 s (cubre 2 intentos del modelo).",
+        "height": 324,
+        "width": 480,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        736,
+        -592
+      ],
+      "id": "76a215d4-f948-4517-9781-3dcade00fe94",
+      "name": "Nota · Salida y fallos"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Leer CV": {
+      "main": [
+        [
+          {
+            "node": "Leer criterios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: CV ilegible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer criterios": {
+      "main": [
+        [
+          {
+            "node": "Analizar y planificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Analizar y planificar",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analizar y planificar",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizar y planificar": {
+      "main": [
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "¿Contrato válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Contrato válido?": {
+      "main": [
+        [
+          {
+            "node": "Leer CV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: payload inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "executionTimeout": 180
+  },
+  "versionId": "b574c296-52f5-460a-b80b-8801c4510c58",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "06b604fd920dea1077a3326c07f5b8069f0d4e750fe5342969d4ca8c688f3769"
+  },
+  "nodeGroups": [],
+  "id": "k0GSuCv0BhQgE1OY",
+  "tags": []
+}
