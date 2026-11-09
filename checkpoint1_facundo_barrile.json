@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "sendTo": "fbarrile85@gmail.com",
+        "sendTo": "tu-email@ejemplo.com",
         "subject": "=Tarea fallida · Agente CV · revisar ejecución",
         "emailType": "text",
         "message": "=Tarea fallida · Agente de CV y Cover Letter\nFecha: {{ $now.toFormat('dd/MM/yyyy HH:mm') }}\nSesión: {{ $('Chat: vacante del candidato').item.json.sessionId }}\n\nPEDIDO DEL USUARIO\n{{ $('Chat: vacante del candidato').item.json.chatInput.slice(0, 600) }}\n\nERROR\n{{ $json.error ? ($json.error.message || JSON.stringify($json.error)) : JSON.stringify($json) }}",
@@ -132,7 +132,7 @@
     },
     {
       "parameters": {
-        "sendTo": "fbarrile85@gmail.com",
+        "sendTo": "tu-email@ejemplo.com",
         "subject": "=[{{ (($json.output.match(/ESTADO:\\s*([^\\n]+)/) || [])[1] || 'SIN ETIQUETA').trim()  }}] Agente CV {{ ($json.intermediateSteps || []).length }} llamada(s) a herramientas",
         "emailType": "text",
         "message": "={{ (($json.output.match(/ESTADO:\\s*([^\\n]+)/) || [])[1] || 'SIN ETIQUETA').trim() === 'COMPLETO' ? 'Tarea completada' : 'Ejecución registrada: ' + (($json.output.match(/ESTADO:\\s*([^\\n]+)/) || [])[1] || 'SIN ETIQUETA').trim() }} · Agente de CV y Cover Letter\nFecha: {{ $now.toFormat('dd/MM/yyyy HH:mm') }}\nSesión: {{ $('Chat: vacante del candidato').item.json.sessionId }}\nIteraciones con herramientas: {{ ($json.intermediateSteps || []).length }} de 8 permitidas\n\nPEDIDO DEL USUARIO (primeros 600 caracteres)\n{{ $('Chat: vacante del candidato').item.json.chatInput.slice(0, 600) }}\n\nDECISIONES DEL AGENTE (herramientas usadas, en orden)\n{{ ($json.intermediateSteps || []).map((s, i) => (i + 1) + '. ' + s.action.tool + ' -> ' + JSON.stringify(s.action.toolInput)).join('\\n') || 'El agente no usó herramientas en esta respuesta.' }}\n\nRESPUESTA ENTREGADA\n{{ $json.output }}",
