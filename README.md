@@ -31,17 +31,17 @@ El asistente suma un **canal de mail**. La persona escribe a la casilla del serv
 
 ```
 Gmail Trigger (casilla del servicio, -from:me, cada minuto)
- → ① ¿Mail automático? (IF, OR, ignora mayúsculas) ── true → Stop
+ → ¿Mail automático? (IF, OR, ignora mayúsculas) ── true → Stop
  → Limpiar mail (adaptador: mismo contrato que el chat + canal y email)
  → Identificar sesión (valida por canal) ← Chat Trigger
  → [circuito del CP3 sin cambios: memoria → Recepcionista → Switch → Workers → memoria → resumen]
  → Respuesta final → ¿Canal?
      ├ chat  → Fin: respuesta por chat
-     └ email → ④ Payload CRM → ¿Payload válido? ── no → alerta
-              → ② Buscar contacto → ¿Búsqueda OK? ── no → Alerta CRM (y el borrador sale igual)
+     └ email → Payload CRM → ¿Payload válido? ── no → alerta
+              → Buscar contacto → ¿Búsqueda OK? ── no → Alerta CRM (y el borrador sale igual)
               → ¿Existe en el CRM? ── sí → Actualizar contacto / no → Crear contacto
-              → Componer mail → ③ Borrador de respuesta (Draft, mismo hilo)
-              → ④ Mensaje para Slack → #casos · ¿Requiere persona? → #escalamientos
+              → Componer mail → Borrador de respuesta (Draft, mismo hilo)
+              → Mensaje para Slack → #casos · ¿Requiere persona? → #escalamientos
 ```
 
 **Decisión de diseño:** el canal de mail es un segundo trigger en el mismo Manager, con un adaptador (`Limpiar mail`) que entrega el mismo contrato que el chat (`sessionId`, `chatInput`). A partir de `Identificar sesión`, chat y mail recorren el mismo circuito. El canal cambia solo dos cosas: el formato de la respuesta (sección `# CANAL` en el prompt del Recepcionista) y la salida (`¿Canal?`). En el mail, el `sessionId` es el email del remitente, así que la memoria del CP3 reconoce a la persona entre mails.
@@ -76,7 +76,7 @@ La memoria (Airtable con token) y el log (Google Sheets) siguen con sus credenci
 
 ### 2. Contención de bucles y mitigación de errores
 
-#### ① IF anti auto-reply
+#### IF anti auto-reply
 
 Va inmediatamente después del trigger. Corta el mail si cumple **cualquiera** de 15 condiciones (OR), **ignorando mayúsculas**:
 - **Asunto:** auto-reply, automatic reply, respuesta automática, out of office, fuera de la oficina, undeliverable, delivery status notification o mail delivery failed.
@@ -96,7 +96,7 @@ El asunto no alcanza: un newsletter no dice "respuesta automática", pero trae `
 
 ![Mail automático: frena en el IF](checkpoint-4/capturas/29-mail3-autoreply-stop-16ms.png)
 
-#### ② Look up antes del Create (evita el 409)
+#### Look up antes del Create (evita el 409)
 
 `Buscar contacto` busca por email antes de escribir: si existe, actualiza; si no, crea. Hay una sola ficha por persona.
 - **`LOWER({Email})` en la fórmula**, y el email llega en minúsculas desde el payload: una mayúscula no alcanza para crear un duplicado.
@@ -115,7 +115,7 @@ El asunto no alcanza: un newsletter no dice "respuesta automática", pero trae `
 
 ![Update: Consultas 2](checkpoint-4/capturas/28c-crm-update-consultas-2.png)
 
-#### ④ Payload limpio y validado (evita el 400)
+#### Payload limpio y validado (evita el 400)
 
 - **`Payload CRM`** deja solo 7 campos: el email normalizado (`trim().toLowerCase()`), el nombre, el estado, la última vacante como `empresa · rol · match`, el canal, la fecha y `email_valido`. Los textos tienen tope (`slice`). Nunca pasa el texto del CV, de la vacante ni de la carta.
 - **El Set calcula y el IF decide:** `email_valido` exige `@` y `.`, sin espacios ni comillas. `¿Payload válido?` frena antes de Airtable. Sin comillas, la fórmula `'{{ $json.email }}'` de la búsqueda no se puede romper: se evitan el 400 y la inyección de fórmulas.
@@ -134,7 +134,7 @@ La vista previa de cada expresión se calculó sin un mail cargado: por eso `ema
 
 ### 3. Gobernanza operativa y HITL
 
-#### ③ Create Draft
+#### Create Draft
 
 `Componer mail` arma la respuesta como correo (saludo, sin markdown, firma "Equipo Job Advisor"). `Borrador de respuesta` usa **Gmail Draft > Create**, en el mismo hilo (`threadId`) y para el remitente. Es el único nodo de salida de correo del workflow: ninguno envía. Una persona revisa, edita y aprieta Enviar.
 

@@ -3140,7 +3140,7 @@
     },
     {
       "parameters": {
-        "content": "## Manager · Job Application Advisor (Checkpoint 4)\nRecibe el pedido **por chat o por mail**, **recuerda a la persona** y delega en el especialista que corresponde. No analiza ni redacta: orquesta.\n\n**Memoria híbrida:** corta, la ventana de 20 mensajes del Recepcionista (la tarea en curso); larga, una fila por sesión en Airtable con estado, datos clave y resumen.\n\n**Integraciones (Módulo 4):** casilla Gmail del servicio (entrada y borradores), CRM en Airtable (ficha de cada persona, sin duplicados) y Slack del equipo (casos, escalamientos y alertas). Ver las notas ① a ④ y \"Mínimo privilegio\".\n\n**Agéntico:** solo el `Recepcionista` (AI Agent). **Lineal:** adaptadores de canal, memoria, Switch, payloads, Execute Workflow, CRM, borrador, log, alertas y respuestas.\n\n**Workers** (lienzos separados): `Worker - Analista de vacante` y `Worker - Redactor de cover letter`.",
+        "content": "## Manager · Job Application Advisor (Checkpoint 4)\nRecibe el pedido **por chat o por mail**, **recuerda a la persona** y delega en el especialista que corresponde. No analiza ni redacta: orquesta.\n\n**Memoria híbrida:** corta, la ventana de 20 mensajes del Recepcionista (la tarea en curso); larga, una fila por sesión en Airtable con estado, datos clave y resumen.\n\n**Integraciones (Módulo 4):** casilla Gmail del servicio (entrada y borradores), CRM en Airtable (ficha de cada persona, sin duplicados) y Slack del equipo (casos, escalamientos y alertas). Ver las notas de cada integración y \"Mínimo privilegio\".\n\n**Agéntico:** solo el `Recepcionista` (AI Agent). **Lineal:** adaptadores de canal, memoria, Switch, payloads, Execute Workflow, CRM, borrador, log, alertas y respuestas.\n\n**Workers** (lienzos separados): `Worker - Analista de vacante` y `Worker - Redactor de cover letter`.",
         "height": 280,
         "width": 868
       },
@@ -3246,7 +3246,7 @@
         -1888,
         1024
       ],
-      "name": "① Anti auto-reply",
+      "name": "Anti auto-reply",
       "id": "169931a3-f156-47d4-ae3d-b66450f654fa"
     },
     {
@@ -3262,7 +3262,7 @@
         5968,
         112
       ],
-      "name": "④ Payload limpio",
+      "name": "Payload limpio",
       "id": "99615e0b-4bf4-4d0d-8fa9-c66fa8b947c7"
     },
     {
@@ -3278,7 +3278,7 @@
         6432,
         112
       ],
-      "name": "② Look up antes del Create",
+      "name": "Look up antes del Create",
       "id": "c5ce0b6f-3cb8-44ca-8ba7-076d197efa9f"
     },
     {
@@ -3294,7 +3294,7 @@
         7568,
         112
       ],
-      "name": "③ Create Draft (HITL)",
+      "name": "Create Draft (HITL)",
       "id": "db163f64-8aab-470d-a4ca-edbd3eed3e65"
     },
     {
