@@ -3316,7 +3316,7 @@
     },
     {
       "parameters": {
-        "content": "## Mínimo privilegio · 3 integraciones OAuth2 (40 %)\n- **Casilla · Gmail** (`Gmail - Casilla Job Advisor`): cuenta dedicada al servicio; se otorgó solo `gmail.modify`. Operaciones: Trigger y Draft > Create. Sin Send ni borrado.\n- **CRM · Airtable** (`Airtable OAuth2 - CRM Job Advisor`): `data.records:read`, `data.records:write` y `schema.bases:read`, con acceso a **una sola base** (`CRM Job Advisor`). Operaciones: Search, Create y Update. Sin Delete.\n- **Canal del equipo · Slack** (`Slack OAuth2 - Job Advisor`): app con solo `chat:write` y `channels:read`. Operación: enviar a 3 canales fijos donde el bot fue invitado.\n\nLa memoria (token de Airtable) y el log (Google Sheets) siguen con sus credenciales del CP3.",
+        "content": "## Mínimo privilegio · 3 integraciones OAuth2\n- **Casilla · Gmail** (`Gmail - Casilla Job Advisor`): cuenta dedicada al servicio; se otorgó solo `gmail.modify`. Operaciones: Trigger y Draft > Create. Sin Send ni borrado.\n- **CRM · Airtable** (`Airtable OAuth2 - CRM Job Advisor`): `data.records:read`, `data.records:write` y `schema.bases:read`, con acceso a **una sola base** (`CRM Job Advisor`). Operaciones: Search, Create y Update. Sin Delete.\n- **Canal del equipo · Slack** (`Slack OAuth2 - Job Advisor`): app con solo `chat:write` y `channels:read`. Operación: enviar a 3 canales fijos donde el bot fue invitado.\n\nLa memoria (token de Airtable) y el log (Google Sheets) siguen con sus credenciales del CP3.",
         "height": 330,
         "width": 868,
         "color": 4
