@@ -1,0 +1,358 @@
+{
+  "name": "Worker - Redactor de cover letter",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"request_id\": \"test-004\",\n  \"session_id\": \"test\",\n  \"intent\": \"COVER_LETTER\",\n  \"confidence\": 0.95,\n  \"payload\": {\n    \"cv_url\": \"\",\n    \"vacante_texto\": \"\",\n    \"instrucciones\": \"\",\n    \"idioma_usuario\": \"es\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        -144
+      ],
+      "id": "3a6395c5-4c66-4633-b4fd-9b94563fc43c",
+      "name": "Entrada"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $json.payload.cv_url }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -192
+      ],
+      "id": "2729e2ee-0c85-44ae-8ca5-5368b9a9c742",
+      "name": "Leer CV",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "poxMCptOYx0KcHHD",
+          "name": "Google Docs account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"estado\": \"ok\",\n  \"estado_motivo\": \"\",\n  \"empresa\": \"Northwind Labs\",\n  \"rol\": \"Engineering Program Manager\",\n  \"idioma\": \"en\",\n  \"asunto\": \"Application for Engineering Program Manager\",\n  \"cover_letter\": \"Texto completo de la carta\",\n  \"palabras\": 220,\n  \"pruebas_usadas\": [\"Experiencia del CV usada en la carta\"],\n  \"requisitos_sin_respaldo\": [\"Requisito de la vacante que el CV no respalda\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        0
+      ],
+      "id": "246774c7-7923-49aa-b083-5af873bf7832",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-5-20250929",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "maxTokensToSample": 8192,
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        464,
+        0
+      ],
+      "id": "9790e589-6049-4481-a2eb-b9104512be03",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "P13B8gIJnXXr4H5D",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": \"{{ $json.output.estado === 'ok' ? 'success' : 'error' }}\",\n  \"worker\": \"redactor\",\n  \"data\": {{ $json.output.estado === 'ok' ? JSON.stringify($json.output) : 'null' }},\n  \"error\": {{ $json.output.estado === 'ok' ? 'null' : JSON.stringify({ code: $json.output.estado === 'vacante_insuficiente' ? 'VACANTE_ILEGIBLE' : 'CV_ILEGIBLE', mensaje: $json.output.estado_motivo }) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        -224
+      ],
+      "id": "3e8d116d-6a88-4aaf-b0a5-738a23f0deb4",
+      "name": "Salida"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"status\": \"error\",\n  \"worker\": \"redactor\",\n  \"data\": null,\n  \"error\": {\n    \"code\": \"CV_ILEGIBLE\",\n    \"mensaje\": \"No pude leer el CV. Verificá que el link sea de un Google Doc y que la cuenta del servicio tenga acceso.\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        96
+      ],
+      "id": "ba4adec6-673a-40db-b363-71099fe8b0e0",
+      "name": "Error: CV ilegible"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": \"error\",\n  \"worker\": \"redactor\",\n  \"data\": null,\n  \"error\": {\n    \"code\": \"ERROR_MODELO\",\n    \"mensaje\": \"La carta no pudo completarse por una falla técnica.\",\n    \"detalle\": {{ JSON.stringify($json.error || 'sin detalle') }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        -64
+      ],
+      "id": "f2b95901-f3dd-4379-8fba-765e4f4357db",
+      "name": "Error: modelo"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=VACANTE\n{{ $('Entrada').item.json.payload.vacante_texto }}\n\nCV DE LA PERSONA\n{{ $('Leer CV').item.json.content }}\n\nINSTRUCCIONES DE LA PERSONA\n{{ $('Entrada').item.json.payload.instrucciones || 'Sin instrucciones.' }}\n\nIDIOMA DE LA PERSONA: {{ $('Entrada').item.json.payload.idioma_usuario || 'es' }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "# ROL\nSos el Redactor de cover letters de un servicio de acompañamiento en búsqueda laboral y outplacement. Recibís el CV de una persona y una vacante, y escribís la carta de presentación para esa postulación.\n\n# ÁMBITO\n- Tu único propósito es escribir la carta. No evaluás si la vacante le conviene a la persona ni calculás el match.\n- El CV es la única fuente de verdad sobre la persona.\n- No adaptás el CV ni te postulás en nombre de nadie.\n\n# CÓMO TRABAJÁS\n1. Leé la vacante para escribir: empresa, rol, idioma y los 3 o 4 requisitos que más pesan.\n2. Buscá en el CV la evidencia más fuerte para esos requisitos: logros concretos, con cifras cuando existan.\n3. Elegí 2 o 3 pruebas y una apertura que conecte la trayectoria de la persona con el rol.\n4. Lo que la vacante pide y el CV no respalda va a \"requisitos_sin_respaldo\". En la carta, no lo menciones o reconocelo con honestidad; nunca lo afirmes.\n\n# REGLAS DE FIDELIDAD\n- Cada afirmación de la carta tiene que existir en el CV. No agregues experiencia, herramientas, responsabilidades ni resultados.\n- Cifras, magnitudes y alcances se toman del CV tal como están: misma cifra, misma unidad, misma precisión y mismo sujeto. No adaptes una cifra del CV para que coincida con lo que pide la vacante.\n- Mantené el nivel de participación de cada verbo: \"coordiné\" no es \"lideré\"; \"co-lideré\" no es \"lideré\".\n- No agregues relaciones de causa ni conclusiones que el CV no afirma.\n- No uses frases de la vacante para describir la experiencia de la persona si el CV no las respalda.\n- Cifras, magnitudes y alcances se toman del CV tal como están: misma cifra, misma unidad, misma precisión, mismo sujeto y mismo período. Si el CV no especifica una dimensión de un dato (cuándo, durante cuánto tiempo, en paralelo o de forma acumulada, solo o con otros, a qué escala), no la completes ni la deduzcas: escribí el dato con el mismo nivel de detalle que tiene el CV. No adaptes una cifra para que coincida con lo que pide la vacante.\n\n# REDACCIÓN\n- Primera persona, tono profesional y directo.\n- Máximo 250 palabras, en 3 o 4 párrafos: apertura, 2 o 3 pruebas concretas, cierre con interés en conversar.\n- Sin frases vendedoras genéricas (\"apasionado\", \"orientado a resultados\", \"sinergia\").\n- No uses el carácter \"—\" (guion largo).\n- No nombres clientes de empleadores anteriores.\n- Sin encabezado de dirección ni fecha: empezá con el saludo.\n\n# IDIOMAS\n- \"cover_letter\" y \"asunto\" van en el idioma que pidan las instrucciones de la persona. Si no piden ninguno, en el idioma de la vacante.\n- \"idioma\": código de dos letras del idioma de la carta.\n- \"estado_motivo\" y \"requisitos_sin_respaldo\" van en el idioma de la persona, que se indica en el mensaje.\n\n# VALORES PERMITIDOS\n- estado: \"ok\", \"cv_insuficiente\", \"vacante_insuficiente\"\n\n# ESTADO\n- \"ok\": escribiste la carta.\n- \"cv_insuficiente\": el texto recibido no es un CV o no alcanza. Explicalo en \"estado_motivo\" y dejá el resto vacío.\n- \"vacante_insuficiente\": el texto no es una vacante o no alcanza para saber a qué rol se postula. Explicalo en \"estado_motivo\" y dejá el resto vacío.\n\n# FORMATO DE RESPUESTA\nRespondé únicamente con el JSON pedido, sin texto antes ni después."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        496,
+        -208
+      ],
+      "id": "49443508-01a2-46d8-a590-4f1031d01c68",
+      "name": "Redactar carta",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c387d894-858c-4813-baf2-4c1514120619",
+              "leftValue": "={{ $json.intent === 'COVER_LETTER' && !!$json.payload && String($json.payload.cv_url || '').trim() !== '' && String($json.payload.vacante_texto || '').trim() !== '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        16,
+        -144
+      ],
+      "id": "bbfc4e2a-1160-42e1-b824-6757d367c113",
+      "name": "¿Contrato válido?"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"status\": \"error\",\n  \"worker\": \"redactor\",\n  \"data\": null,\n  \"error\": {\n    \"code\": \"ERROR_MODELO\",\n    \"mensaje\": \"El pedido llegó incompleto al Redactor\",\n    \"detalle\": {{ JSON.stringify($json.error || 'sin detalle') }}\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        864,
+        272
+      ],
+      "id": "37a42886-c3c3-4da0-9538-321e6aa02806",
+      "name": "Error: payload inválido"
+    },
+    {
+      "parameters": {
+        "content": "## Worker · Redactor de cover letter\nTarea atómica: escribir la cover letter para una vacante. Autónomo: lee la vacante y el CV, elige 2 o 3 pruebas del CV y redacta. No depende del Analista.\n\n**Entrada** (Execute Workflow Trigger):\n`request_id` · `session_id` · `intent` · `confidence` · `payload`\n\n`payload`: cv_url, vacante_texto, instrucciones, idioma_usuario (no recibe criterios: no los necesita)",
+        "height": 308,
+        "width": 500,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -576
+      ],
+      "id": "72cae146-eff3-44a8-9a88-8525661d256f",
+      "name": "Nota · Worker"
+    },
+    {
+      "parameters": {
+        "content": "## Lineal + un paso de IA\n- `¿Contrato válido?` (IF): exige `intent = COVER_LETTER`, `cv_url` y `vacante_texto`. Si no, `PAYLOAD_INVALIDO` sin gastar tokens.\n- `Leer CV` (Google Docs): lectura determinista antes del modelo.\n- `Redactar carta`: Basic LLM Chain (Claude Sonnet, temperatura 0.4) con Structured Output Parser.\n- Fuente de verdad: el CV. Lo que la vacante pide y el CV no respalda va a `requisitos_sin_respaldo`, no a la carta.",
+        "height": 308,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -576
+      ],
+      "id": "c9d2dd2e-067c-4167-8a03-2207150a4d2a",
+      "name": "Nota · Lineal + IA"
+    },
+    {
+      "parameters": {
+        "content": "## Salida y fallos\nSiempre devuelve `{ status, worker, data, error }`:\n- `error · PAYLOAD_INVALIDO`: el contrato llegó incompleto o con otra intención (corta antes de leer el CV)\n- `success` con `cover_letter`, `asunto`, `idioma`, `palabras`, `pruebas_usadas`, `requisitos_sin_respaldo`\n- `error · CV_ILEGIBLE`: no se pudo leer el CV o no alcanza\n- `error · VACANTE_ILEGIBLE`: la vacante no alcanza\n- `error · ERROR_MODELO`: falló el modelo (JSON de contingencia)\n\nTimeout del workflow: 180 s (cubre 2 intentos del modelo).",
+        "height": 308,
+        "width": 480,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -576
+      ],
+      "id": "44d958b8-a802-4ed1-b38d-98d8664d32b9",
+      "name": "Nota · Salida y fallos"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "¿Contrato válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer CV": {
+      "main": [
+        [
+          {
+            "node": "Redactar carta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: CV ilegible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Redactar carta",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactar carta",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar carta": {
+      "main": [
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Contrato válido?": {
+      "main": [
+        [
+          {
+            "node": "Leer CV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error: payload inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "executionTimeout": 180
+  },
+  "versionId": "29edf1a7-4ba9-4e1b-8bee-db60fd7fe0a1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "06b604fd920dea1077a3326c07f5b8069f0d4e750fe5342969d4ca8c688f3769"
+  },
+  "nodeGroups": [],
+  "id": "cVhiEo2XaopHi6Hy",
+  "tags": []
+}
